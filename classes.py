@@ -13,13 +13,27 @@ Created on Wed Sep 29 08:22:10 2021
 import numpy as np
 import operator as op
 import random as rd
+import pickle as pkl
+import csv
 class allPlayers:
-    def __init__(self,playerList,teamLen,idealComp=[]):
+    def __init__(self,user,playerList,teamLen=2,idealComp=[]):
+        self.user = user
+        self.playersByPosition = {}
+        if idealComp:
+            for position in idealComp:
+                self.playersByPosition[position] = []
+                for player in playerList:
+                    if position in player.positions or player.positions == 'wildCard':
+                        self.playersByPosition[position].append(player)
         self.idealComp=idealComp
         self.teamLen = teamLen
         self.playerList = playerList
         for i,player in enumerate(self.playerList):
             player.index = i
+        allPlayerNames = []
+        for player in self.playerList:
+            allPlayerNames.append(player.name)
+        self.allNames = allPlayerNames
         self.length = len(playerList)
         self.lastTeams = []
         self.twoPlayer = np.zeros((self.length,self.length),dtype=float)
@@ -41,12 +55,20 @@ class allPlayers:
         newFivePlayer = np.zeros((self.length,self.length,self.length,self.length,self.length),dtype=float)
         newFivePlayer[0:self.length-1,0:self.length-1,0:self.length-1,0:self.length-1,0:self.length-1] = self.fivePlayer
         self.fivePlayer = newFivePlayer
-    def makeTeams(self,nTeams,PlayerNames,teamLen=None,idealComp=None):
+    def makeTeams(self,nTeams,PlayerNames,teamLen=None,idealComp=False):
+        if idealComp == True:
+            idealComp = self.idealComp
+        elif type(idealComp) != list:
+            idealComp = None
         Players = []
         for readyName in PlayerNames:
-            for player in self.playerList:
-                if player.name == readyName:
-                    Players.append(player)
+            if readyName in self.allNames:
+                    Players.append(self.playerList[self.allNames.index(readyName)])
+            elif readyName == str:
+                Players.append(player(readyName))
+            elif isinstance(readyName,player):
+                self.addPlayer(readyName)
+                Players.append(readyName)
         if teamLen == None:
             teamLen = self.teamLen
         allTeamGroups = []
@@ -55,16 +77,34 @@ class allPlayers:
             teamScores = []
             teamGroup = []
             allTeamGroups.append(teamGroup)
+            if idealComp:
+                groupPlayersByPosition = {}
+                for position in self.playersByPosition:
+                    groupPlayersByPosition[position] = self.playersByPosition[position].copy()
+                print(f"1:grouplayersByPosition = {groupPlayersByPosition['center'][0]}")
+                positions = groupPlayersByPosition.keys()
+            else:
+                positions = range(teamLen)
+            groupPlayers = Players.copy()
             for i in range(nTeams):
-                groupPlayers = Players.copy()
                 teamGroup.append([])
             for team in teamGroup:
                 teamScore = 0
-                for j in range(teamLen):
-                    randomPlayer = rd.randint(0,len(groupPlayers)-1)
-                    team.append(groupPlayers.pop(randomPlayer))
+                print(f"2:grouplayersByPosition = {groupPlayersByPosition['center'][0]}")
+                for j,pos in enumerate(positions):
+                    if idealComp:
+                        try:
+                            randomPlayer = rd.randint(0,len(groupPlayersByPosition[pos])-1)
+                            team.append(groupPlayersByPosition[pos].pop(randomPlayer))
+                        except ValueError:
+                            #print(f'len(groupPlayersByPosition[pos])={len(groupPlayersByPosition[pos])}')
+                            #print(f'pos is = {pos}')
+                            pass
+                    else:
+                        randomPlayer = rd.randint(0,len(groupPlayers)-1)
+                        team.append(groupPlayers.pop(randomPlayer))
                 for player1 in team:
-                    teamScore += player.talent
+                    teamScore += player1.talent
                     idx1 = player1.index
                     for player2 in team:
                         idx2 = player2.index
@@ -97,14 +137,16 @@ class allPlayers:
         bestGroup = allTeamGroups[bestGroupIndex]
         self.lastTeams = bestGroup
         self.remindTeams()
-
+        self.save()
         return bestGroup
     def loadWins(self):
         wins = []
         for i,team in enumerate(self.lastTeams):
-            teamWins = input(f'How many wins did team {i} have?(type r for reminder)')
+            teamWins = input(f'How many wins did team {i} have?(type r for reminder,q to quit)')
             if teamWins == 'r' or teamWins=='R':
                 self.remindTeams()
+            elif teamWins == 'q' or teamWins == 'Q':
+                return 'See you later'
             else:
                 while True:
                     try:
@@ -112,7 +154,7 @@ class allPlayers:
                         wins.append(teamWins)
                         break
                     except ValueError:
-                        teamWins = input('please type in an integer')
+                        teamWins = input('please type in an integer ')
                 for player in team:
                     player.wins += teamWins
                     idx1 = player.index
@@ -143,9 +185,10 @@ class allPlayers:
                         losses.append(teamLosses)
                         break
                     except:
-                        teamLosses = input('please type in an integer')
+                        teamLosses = input('please type in an integer ')
                 for player in team:
                     player.losses += teamLosses
+                    player.calculateTalent()
                     idx1 = player.index
                     for player2 in team[1:]:
                         idx2 = player2.index
@@ -162,26 +205,43 @@ class allPlayers:
                                             for player5 in team[4:]:
                                                 idx5 =  player5.index
                                                 self.fivePlayer[idx1,idx2,idx3,idx4,idx5] -= teamLosses
+        self.adjustTalent()
+        self.save()
     def remindTeams(self):
         for team in range(len(self.lastTeams)):
             message = f'team {team} is: '
             for player in self.lastTeams[team]:
                 message = message + str(player.name) + ' ' 
             print(message)
-    
-        
-                    
-
+    def adjustTalent(self):
+        bestPlayerswinMarg = self.playerList.copy()
+        bestPlayerswinMarg.sort(key = op.attrgetter('winMargin'))
+        for index,player in enumerate(bestPlayerswinMarg):
+            if player.talent -1 < index/self.length:
+                player.talent += 1
+    def loadPlayers(self,playersFile):
+        with open(playersFile,'rb') as file:
+            reader = csv.reader(file)
+            playersNameList = list(reader)
+        for playerName in playersNameList:
+            newPlayer = player(playerName)
+            self.addPlayer(newPlayer)
+    def save(self):
+        with open(f'{self.user}.pkl','wb') as file:
+            pkl.dump(self,file)
 class player:
-    def __init__(self,name,profficiency = 1,position=['wildCard'],positionNot = []):
+    def __init__(self, name, talent = 5, positions=['wildCard'], positionNot = []):
         self.name = name
-        self.talent = profficiency
-        self.position = position
+        self.talent = talent
+        self.positions = positions
         self.positionNot = positionNot
         self.wins = 0
         self.losses = 0
+        if (self.wins + self.losses) == 0:
+            self.winMargin = 0
+        else:
+            self.winMargin = ((self.wins -self.losses) / (self.wins + self.losses))
         self.index = 0
     def calculateTalent(self):
-        self.talent * self.wins / self.losses
-
+        self.talent =  self.talent * self.winMargin
         
