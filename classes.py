@@ -90,7 +90,6 @@ class allPlayers:
                 teamGroup.append([])
             for team in teamGroup:
                 teamScore = 0
-                print(f"2:grouplayersByPosition = {groupPlayersByPosition['center'][0]}")
                 for j,pos in enumerate(positions):
                     if idealComp:
                         try:
@@ -219,6 +218,8 @@ class allPlayers:
         for index,player in enumerate(bestPlayerswinMarg):
             if player.talent -1 < index/self.length:
                 player.talent += 1
+            elif player.talent + 1 > index/self.length:
+                player.talent -= 1
     def loadPlayers(self,playersFile):
         with open(playersFile,'rb') as file:
             reader = csv.reader(file)
