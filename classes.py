@@ -13,20 +13,21 @@ Created on Wed Sep 29 08:22:10 2021
 import numpy as np
 import operator as op
 import random as rd
-import pickle as pkl
+import dill
 import csv
 class allPlayers:
-    def __init__(self, user, playerList, teamLen=2, idealComp=[]):
+    def __init__(self, user, playerList, teamLen=5, idealComp=[]):
         self.user = user
         self.playersByPosition = {}
+        self.teamLen = teamLen
         if idealComp:
+            self.teamLen = len(idealComp)
             for position in idealComp:
                 self.playersByPosition[position] = []
                 for player in playerList:
                     if position in player.positions or player.positions == 'wildCard':
                         self.playersByPosition[position].append(player)
         self.idealComp=idealComp
-        self.teamLen = teamLen
         self.playerList = playerList
         for i,player in enumerate(self.playerList):
             player.index = i
@@ -57,20 +58,28 @@ class allPlayers:
         newFivePlayer[0:self.length-1,0:self.length-1,0:self.length-1,0:self.length-1,0:self.length-1] = self.fivePlayer
         self.fivePlayer = newFivePlayer
     
-    def makeTeams(self, nTeams, PlayerNames, teamLen=None, idealComp=False, reps = 10000):
+    def makeTeams(self, nTeams, PlayerNames , teamLen= None, idealComp= False, reps = 10000, allPlayers = True):
         if idealComp == True:
-            idealComp = self.idealComp
+            if teamLen != self.teamLen:
+                idealComp = False
+                print(f'teamLen is {teamLen} and self.teamLen is {self.teamLen}')
+                print("Can't do ideal composition with different number of players than the established ideal composition.")
+            else:
+                idealComp = self.idealComp
         elif type(idealComp) != list:
             idealComp = None
         Players = []
-        for readyName in PlayerNames:
-            if readyName in self.allNames:
-                    Players.append(self.playerList[self.allNames.index(readyName)])
-            elif readyName == str:
-                Players.append(player(readyName))
-            elif isinstance(readyName,player):
-                self.addPlayer(readyName)
-                Players.append(readyName)
+        if allPlayers == True:
+            Players = self.playerList
+        else:
+            for readyName in PlayerNames:
+                if readyName in self.allNames:
+                        Players.append(self.playerList[self.allNames.index(readyName)])
+                elif readyName == str:
+                    Players.append(player(readyName))
+                elif isinstance(readyName,player):
+                    self.addPlayer(readyName)
+                    Players.append(readyName)
         if teamLen == None:
             teamLen = self.teamLen
         allTeamGroups = []
@@ -83,7 +92,9 @@ class allPlayers:
                 groupPlayersByPosition = {}
                 for position in self.playersByPosition:
                     groupPlayersByPosition[position] = self.playersByPosition[position].copy()
-                print(f"1:grouplayersByPosition = {groupPlayersByPosition['center'][0]}")
+                    for p,play in enumerate(groupPlayersByPosition[position]):
+                        if play not in Players:
+                            del groupPlayersByPosition[position][p]
                 positions = groupPlayersByPosition.keys()
             else:
                 positions = range(teamLen)
@@ -140,6 +151,7 @@ class allPlayers:
         self.remindTeams()
         self.save()
         return bestGroup
+   
     def loadWins(self):
         wins = []
         for i,team in enumerate(self.lastTeams):
@@ -208,12 +220,14 @@ class allPlayers:
                                                 self.fivePlayer[idx1,idx2,idx3,idx4,idx5] -= teamLosses
         self.adjustTalent()
         self.save()
+    
     def remindTeams(self):
         for team in range(len(self.lastTeams)):
             message = f'team {team} is: '
             for player in self.lastTeams[team]:
                 message = message + str(player.name) + ' ' 
             print(message)
+    
     def adjustTalent(self):
         bestPlayerswinMarg = self.playerList.copy()
         bestPlayerswinMarg.sort(key = op.attrgetter('winMargin'))
@@ -222,6 +236,7 @@ class allPlayers:
                 player.talent += 1
             elif player.talent + 1 > index/self.length:
                 player.talent -= 1
+    
     def loadPlayers(self,playersFile):
         with open(playersFile,'rb') as file:
             reader = csv.reader(file)
@@ -229,9 +244,11 @@ class allPlayers:
         for playerName in playersNameList:
             newPlayer = player(playerName)
             self.addPlayer(newPlayer)
+    
     def save(self):
         with open(f'{self.user}.pkl','wb') as file:
-            pkl.dump(self,file)
+            dill.dump(self,file)
+
 class player:
     def __init__(self, name, talent = 5, positions=['wildCard'], positionNot = []):
         self.name = name

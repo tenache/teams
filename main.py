@@ -8,7 +8,7 @@ from classes import player
 from classes import allPlayers
 from time import sleep
 import csv
-import pickle as pkl
+import dill
 from makePlayerList import makePlayerList
 def main():
     players = []
@@ -16,7 +16,7 @@ def main():
     
     try:
         with open(f'{User}.pkl','rb') as file:
-            allInfo = pkl.load(file)
+            allInfo = dill.load(file)
     except FileNotFoundError:
         players,names,talents = makePlayerList('players.csv')
     except FileNotFoundError:
@@ -25,17 +25,18 @@ def main():
         pass
     
     allInfo = allPlayers(user=User,playerList=players,idealComp =['center','shootingGuard','pointGuard','powerForward','smallForward'])
-    print(f"playersByPositions[center] is /n {allInfo.playersByPosition['center']}")
     TeamLen = int(input('How big is each team? '))
     numberTeams = int(input('How many teams? '))
     TodayNames = []
     keepGoing = True
+    All = False
     while keepGoing == True:
         newName = input('Name a player participating(type "done" to finish, "all" to include everyone in your list ): ')
         if newName == 'done' or newName == 'Done':
                keepGoing = False 
         elif newName == 'all' or newName == 'All':
             keepGoing = False
+            All = True
         else:
             if newName in allInfo.allNames:
                 TodayNames.append(newName)
@@ -44,12 +45,15 @@ def main():
                 if isGuest == 'G' or isGuest == 'g':
                     TodayNames.append(newName)
                 elif isGuest == 't' or isGuest == 'T':
-                    newName = input('No problem. Try again ...')
-                    TodayNames.append(newName)
-    if newName == 'all' or newName == 'All':
-        TodayNames = names
-    
-    allInfo.makeTeams(nTeams = numberTeams,teamLen = TeamLen, PlayerNames = TodayNames, idealComp = True )
+                    while newName not in allInfo.allNames:
+                        newName = input('Typo! No problem. Try again ...')
+                        TodayNames.append(newName)
+    ideal = input('Do you wish an ideal composition, with every position correctly covered(y/n)?')
+    if ideal == 'y':
+        allInfo.makeTeams(nTeams = numberTeams,teamLen = TeamLen, PlayerNames = TodayNames, idealComp = True , allPlayers = All)
+    else:
+        allInfo.makeTeams(nTeams = numberTeams,teamLen = TeamLen, PlayerNames = TodayNames, idealComp = False , allPlayers = All)
+        
     sleep(5)
     allInfo.loadWins()
     allInfo.save()
