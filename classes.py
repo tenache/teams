@@ -25,7 +25,7 @@ class allPlayers:
             for position in idealComp:
                 self.playersByPosition[position] = []
                 for player in playerList:
-                    if position in player.positions or player.positions == 'wildCard':
+                    if position in player.positions or player.positions[0] == 'wildCard':
                         self.playersByPosition[position].append(player)
         self.idealComp=idealComp
         self.playerList = playerList
@@ -41,7 +41,7 @@ class allPlayers:
         self.threePlayer = np.zeros((self.length,self.length,self.length),dtype=float)
         self.fourPlayer = np.zeros((self.length,self.length,self.length,self.length),dtype=float)
         self.fivePlayer = np.zeros((self.length,self.length,self.length,self.length,self.length),dtype=float)
-    
+        self.allCombos = [self.twoPlayer,self.threePlayer,self.fourPlayer,self.fivePlayer]
     def addPlayer(self,player):
         self.playerList.append(player)
         self.length += 1
@@ -85,6 +85,8 @@ class allPlayers:
         allTeamGroups = []
         allDiffScores = []
         for i in range(reps):
+            if i % 1000 == 0:
+                print(f'Patience, {i/1000}th of the way there')
             teamScores = []
             teamGroup = []
             allTeamGroups.append(teamGroup)
@@ -107,10 +109,14 @@ class allPlayers:
                     if idealComp:
                         try:
                             randomPlayer = rd.randint(0,len(groupPlayersByPosition[pos])-1)
-                            team.append(groupPlayersByPosition[pos].pop(randomPlayer))
+                            newPlayer = groupPlayersByPosition[pos].pop(randomPlayer)
+                            team.append(newPlayer)
+                            for pos2 in positions:
+                                for p2,play in enumerate(groupPlayersByPosition[pos2]):
+                                    if newPlayer == play:
+                                        del groupPlayersByPosition[pos2][p2]
                         except ValueError:
-                            #print(f'len(groupPlayersByPosition[pos])={len(groupPlayersByPosition[pos])}')
-                            #print(f'pos is = {pos}')
+                            print(f'len(groupPlayersByPosition[{pos}])={len(groupPlayersByPosition[pos])}')
                             pass
                     else:
                         randomPlayer = rd.randint(0,len(groupPlayers)-1)
@@ -250,7 +256,7 @@ class allPlayers:
             dill.dump(self,file)
 
 class player:
-    def __init__(self, name, talent = 5, positions=['wildCard'], positionNot = []):
+    def __init__(self, name, talent = 50, positions=['wildCard'], positionNot = []):
         self.name = name
         self.talent = talent
         self.positions = positions
