@@ -16,7 +16,7 @@ import random as rd
 import pickle as pkl
 import csv
 class allPlayers:
-    def __init__(self,user,playerList,teamLen=2,idealComp=[]):
+    def __init__(self, user, playerList, teamLen=2, idealComp=[]):
         self.user = user
         self.playersByPosition = {}
         if idealComp:
@@ -40,6 +40,7 @@ class allPlayers:
         self.threePlayer = np.zeros((self.length,self.length,self.length),dtype=float)
         self.fourPlayer = np.zeros((self.length,self.length,self.length,self.length),dtype=float)
         self.fivePlayer = np.zeros((self.length,self.length,self.length,self.length,self.length),dtype=float)
+    
     def addPlayer(self,player):
         self.playerList.append(player)
         self.length += 1
@@ -55,7 +56,8 @@ class allPlayers:
         newFivePlayer = np.zeros((self.length,self.length,self.length,self.length,self.length),dtype=float)
         newFivePlayer[0:self.length-1,0:self.length-1,0:self.length-1,0:self.length-1,0:self.length-1] = self.fivePlayer
         self.fivePlayer = newFivePlayer
-    def makeTeams(self,nTeams,PlayerNames,teamLen=None,idealComp=False):
+    
+    def makeTeams(self, nTeams, PlayerNames, teamLen=None, idealComp=False, reps = 10000):
         if idealComp == True:
             idealComp = self.idealComp
         elif type(idealComp) != list:
@@ -73,7 +75,7 @@ class allPlayers:
             teamLen = self.teamLen
         allTeamGroups = []
         allDiffScores = []
-        for i in range(1000):
+        for i in range(reps):
             teamScores = []
             teamGroup = []
             allTeamGroups.append(teamGroup)
