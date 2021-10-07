@@ -15,16 +15,22 @@ players = []
 User = input('Who are you? ')
 
 try:
-    with open(f'{User}.pkl','rb') as file:
-        allInfo = dill.load(file)
+    allInfo = allPlayers.loadJson(User)
 except FileNotFoundError:
     players,names,talents = makePlayerList('players.csv')
+    allInfo = allPlayers(user=User,playerList=players,idealComp = ['center','shootingGuard','pointGuard','powerForward','smallForward'])
+    #with open('players.csv','r') as input:
+    #    with open(f'{User}_players.csv','w') as output:
+    #        for line in input:
+    #            output.write(line)
 except FileNotFoundError:
-    print('please load a csv file with all the players names with the name "players.csv"')
+    players, names, talents = makePlayerList('{User}_players.csv')
+    allInfo = allPlayers(user=User,playerList=players,idealComp =['center','shootingGuard','pointGuard','powerForward','smallForward'])
+    print(allInfo.user)
+except FileNotFoundError:
+    print('please load a csv file with all the players names with the name "players.csv" or {User}_players.csv')
 finally:
     pass
-
-allInfo = allPlayers(user=User,playerList=players,idealComp =['center','shootingGuard','pointGuard','powerForward','smallForward'])
 TeamLen = int(input('How big is each team? '))
 numberTeams = int(input('How many teams? '))
 TodayNames = []
@@ -48,10 +54,13 @@ while keepGoing == True:
                 while newName not in allInfo.allNames:
                     newName = input('Typo! No problem. Try again ...')
                     TodayNames.append(newName)
-
-allInfo.makeTeams(nTeams = numberTeams,teamLen = TeamLen, PlayerNames = TodayNames, idealComp = True , allPlayers = All)
+ideal = input('Do you wish an ideal composition, with every position correctly covered(y/n)?')
+if ideal == 'y' or ideal == 'Y':
+    allInfo.makeTeams(nTeams = numberTeams,teamLen = TeamLen, PlayerNames = TodayNames, idealComp = True , allPlayers = All)
+else:
+    allInfo.makeTeams(nTeams = numberTeams,teamLen = TeamLen, PlayerNames = TodayNames, idealComp = False , allPlayers = All)
+    
 sleep(5)
 allInfo.loadWins()
-allInfo.save()
+allInfo.toJson()
 
-    

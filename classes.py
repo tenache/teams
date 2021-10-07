@@ -15,8 +15,9 @@ import operator as op
 import random as rd
 import dill
 import csv
+import json
 class allPlayers:
-    def __init__(self, user, playerList, teamLen=5, idealComp=[]):
+    def __init__(self, user, playerList, teamLen=5, idealComp=[], lastTeams = [], allComps = [] ):
         self.user = user
         self.playersByPosition = {}
         self.teamLen = teamLen
@@ -36,12 +37,19 @@ class allPlayers:
             allPlayerNames.append(player.name)
         self.allNames = allPlayerNames
         self.length = len(playerList)
-        self.lastTeams = []
-        self.twoPlayer = np.zeros((self.length,self.length),dtype=float)
-        self.threePlayer = np.zeros((self.length,self.length,self.length),dtype=float)
-        self.fourPlayer = np.zeros((self.length,self.length,self.length,self.length),dtype=float)
-        self.fivePlayer = np.zeros((self.length,self.length,self.length,self.length,self.length),dtype=float)
-        self.allCombos = [self.twoPlayer,self.threePlayer,self.fourPlayer,self.fivePlayer]
+        self.lastTeams = lastTeams
+        if allComps:
+            self.twoPlayer = allComps[0]
+            self.threePlayer = allComps[1]
+            self.fourPlayer = allComps[2]
+            self.fivePlayer = allComps[3]
+        else:
+            self.twoPlayer = np.zeros((self.length,self.length),dtype=float)
+            self.threePlayer = np.zeros((self.length,self.length,self.length),dtype=float)
+            self.fourPlayer = np.zeros((self.length,self.length,self.length,self.length),dtype=float)
+            self.fivePlayer = np.zeros((self.length,self.length,self.length,self.length,self.length),dtype=float)
+        self.allComps = [self.twoPlayer,self.threePlayer,self.fourPlayer,self.fivePlayer]
+    
     def addPlayer(self,player):
         self.playerList.append(player)
         self.length += 1
@@ -84,68 +92,68 @@ class allPlayers:
             teamLen = self.teamLen
         allTeamGroups = []
         allDiffScores = []
-        for i in range(reps):
-            if i % 1000 == 0:
-                print(f'Patience, {i/1000}th of the way there')
-            teamScores = []
-            teamGroup = []
-            allTeamGroups.append(teamGroup)
-            if idealComp:
-                groupPlayersByPosition = {}
-                for position in self.playersByPosition:
-                    groupPlayersByPosition[position] = self.playersByPosition[position].copy()
-                    for p,play in enumerate(groupPlayersByPosition[position]):
-                        if play not in Players:
-                            del groupPlayersByPosition[position][p]
-                positions = groupPlayersByPosition.keys()
-            else:
-                positions = range(teamLen)
-            groupPlayers = Players.copy()
-            for i in range(nTeams):
-                teamGroup.append([])
-            for team in teamGroup:
-                teamScore = 0
-                for j,pos in enumerate(positions):
-                    if idealComp:
-                        try:
-                            randomPlayer = rd.randint(0,len(groupPlayersByPosition[pos])-1)
-                            newPlayer = groupPlayersByPosition[pos].pop(randomPlayer)
-                            team.append(newPlayer)
-                            for pos2 in positions:
-                                for p2,play in enumerate(groupPlayersByPosition[pos2]):
-                                    if newPlayer == play:
-                                        del groupPlayersByPosition[pos2][p2]
-                        except ValueError:
-                            print(f'len(groupPlayersByPosition[{pos}])={len(groupPlayersByPosition[pos])}')
-                            pass
-                    else:
-                        randomPlayer = rd.randint(0,len(groupPlayers)-1)
-                        team.append(groupPlayers.pop(randomPlayer))
-                for player1 in team:
-                    teamScore += player1.talent
-                    idx1 = player1.index
-                    for player2 in team:
-                        idx2 = player2.index
-                        teamScore += self.twoPlayer[idx1,idx2]
-                        if teamLen > 2:
-                            for player3 in team:
-                                idx3=player3.index
-                                teamScore += self.threePlayer[idx1,idx2,idx3]
-                                if teamLen > 3:
-                                    for player4 in team:
-                                        idx4=player4.index
-                                        teamScore += self.fourPlayer[idx1,idx2,idx3,idx4]
-                                        if teamLen > 4:
-                                            for player5 in team:
-                                                idx5 = player5.index
-                                                teamScore += self.fivePlayer[idx1,idx2,idx3,idx4,idx5]
-                teamScores.append(teamScore)
-            diffScore = 0
-            for score0 in teamScores:
-                for score1 in teamScores:
-                    diff = abs(score0 - score1)
-                    diffScore += diff
-            allDiffScores.append(diffScore)
+        for i in range(10):
+            print(f'Patience, we\'re {i} 10ths of the way there')
+            for j in range(int(reps/10)):
+                teamScores = []
+                teamGroup = []
+                allTeamGroups.append(teamGroup)
+                if idealComp:
+                    groupPlayersByPosition = {}
+                    for position in self.idealComp:
+                        groupPlayersByPosition[position] = self.playersByPosition[position].copy()
+                        for p,play in enumerate(groupPlayersByPosition[position]):
+                            if play not in Players:
+                                del groupPlayersByPosition[position][p]
+                    positions = groupPlayersByPosition.keys()
+                else:
+                    positions = range(teamLen)
+                groupPlayers = Players.copy()
+                for i in range(nTeams):
+                    teamGroup.append([])
+                for team in teamGroup:
+                    teamScore = 0
+                    for j,pos in enumerate(positions):
+                        if idealComp:
+                            try:
+                                randomPlayer = rd.randint(0,len(groupPlayersByPosition[pos])-1)
+                                newPlayer = groupPlayersByPosition[pos].pop(randomPlayer)
+                                team.append(newPlayer)
+                                for pos2 in positions:
+                                    for p2,play in enumerate(groupPlayersByPosition[pos2]):
+                                        if newPlayer == play:
+                                            del groupPlayersByPosition[pos2][p2]
+                            except ValueError:
+                                print(f'len(groupPlayersByPosition[{pos}])={len(groupPlayersByPosition[pos])}')
+                                pass
+                        else:
+                            randomPlayer = rd.randint(0,len(groupPlayers)-1)
+                            team.append(groupPlayers.pop(randomPlayer))
+                    for player1 in team:
+                        teamScore += player1.talent
+                        idx1 = player1.index
+                        for player2 in team:
+                            idx2 = player2.index
+                            teamScore += self.twoPlayer[idx1,idx2]
+                            if teamLen > 2:
+                                for player3 in team:
+                                    idx3=player3.index
+                                    teamScore += self.threePlayer[idx1,idx2,idx3]
+                                    if teamLen > 3:
+                                        for player4 in team:
+                                            idx4=player4.index
+                                            teamScore += self.fourPlayer[idx1,idx2,idx3,idx4]
+                                            if teamLen > 4:
+                                                for player5 in team:
+                                                    idx5 = player5.index
+                                                    teamScore += self.fivePlayer[idx1,idx2,idx3,idx4,idx5]
+                    teamScores.append(teamScore)
+                diffScore = 0
+                for score0 in teamScores:
+                    for score1 in teamScores:
+                        diff = abs(score0 - score1)
+                        diffScore += diff
+                allDiffScores.append(diffScore)
         minDiffScores = min(allDiffScores)
         bestGroupIndexES = []
         for scoreDiff in allDiffScores:
@@ -155,7 +163,7 @@ class allPlayers:
         bestGroup = allTeamGroups[bestGroupIndex]
         self.lastTeams = bestGroup
         self.remindTeams()
-        self.save()
+        self.toJson()
         return bestGroup
    
     def loadWins(self):
@@ -225,13 +233,13 @@ class allPlayers:
                                                 idx5 =  player5.index
                                                 self.fivePlayer[idx1,idx2,idx3,idx4,idx5] -= teamLosses
         self.adjustTalent()
-        self.save()
+        self.toJson()
     
     def remindTeams(self):
         for team in range(len(self.lastTeams)):
             message = f'team {team} is: '
             for player in self.lastTeams[team]:
-                message = message + str(player.name) + ' ' 
+                message = message + str(player.name) + ' ' + str(player.index) + ' '
             print(message)
     
     def adjustTalent(self):
@@ -251,23 +259,79 @@ class allPlayers:
             newPlayer = player(playerName)
             self.addPlayer(newPlayer)
     
-    def save(self):
-        with open(f'{self.user}.pkl','wb') as file:
-            dill.dump(self,file)
+    def toJson(self):
+        jsonAllComps = []
+        for comp in self.allComps:
+            jsonAllComps.append(json.dumps(comp.tolist()))  
+        jsonPlyrs = []
+        for plyr in self.playerList:
+            jsonPlyrs.append(plyr.saveToJson())
+        jsonLastTeams = []
+        for t,team in enumerate(self.lastTeams):
+            jsonLastTeams.append([])
+            for plyr in team:
+                jsonLastTeams[t].append(plyr.saveToJson())
+        allPObj = {
+            'user': self.user,
+            'playerList': jsonPlyrs,
+            'teamLen': self.teamLen,
+            'idealComp': self.idealComp,
+            'lastTeams': jsonLastTeams,
+            'allComps':jsonAllComps
+            }
+        with open(f'{self.user}.json','w') as file:
+            json.dump(allPObj,file,sort_keys = True, indent = 4)
+    @staticmethod
+    def loadJson(user):
+        with open(f'{user}.json','r') as file:
+             jsonData = json.load(file)
+        plyrList = []
+        for jsonPlyr in jsonData['playerList']:
+            plyrList.append(player.loadFromJson(jsonPlyr))
+        lstTeams = []
+        for t,team in enumerate(jsonData['lastTeams']):
+            lstTeams.append([])
+            for jsonPlyr in team:
+                lstTeams[t].append(player.loadFromJson(jsonPlyr))
+        allComps = []
+        for comp in jsonData['allComps']:
+            allComps.append(np.array(json.loads(comp)))
+        
+        newAllPlayers = allPlayers(jsonData['user'],plyrList,jsonData['teamLen'],jsonData['idealComp'],\
+                                   lstTeams,allComps)
+        return newAllPlayers
 
 class player:
-    def __init__(self, name, talent = 50, positions=['wildCard'], positionNot = []):
+    def __init__(self, name, talent = 50, positions=['wildCard'], wins = 0, losses = 0, index = 0):
         self.name = name
         self.talent = talent
         self.positions = positions
-        self.positionNot = positionNot
-        self.wins = 0
-        self.losses = 0
+        self.wins = wins
+        self.losses = losses
         if (self.wins + self.losses) == 0:
             self.winMargin = 0
         else:
             self.winMargin = ((self.wins -self.losses) / (self.wins + self.losses))
-        self.index = 0
+        self.index = index
     def calculateTalent(self):
         self.talent =  self.talent * self.winMargin
+    def saveToJson(self):
+        playerObject = {
+            'name': self.name,
+            'talent': self.talent,
+            'positions': self.positions,
+            'wins': self.wins,
+            'losses': self.losses,
+            'index': self.index,
+            }
+        return json.dumps(playerObject, sort_keys=True, indent = 4)
+    @staticmethod
+    def loadFromJson(jsonPlayerInput):
+        jsonPObj = json.loads(jsonPlayerInput)
+        newPlayer = player(jsonPObj['name'],jsonPObj['talent'],jsonPObj['positions'],jsonPObj['wins'],\
+                           jsonPObj['losses'],jsonPObj['index'])
+        return newPlayer
+    
+         
+        
         
